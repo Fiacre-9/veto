@@ -11,7 +11,7 @@ $config = [
     'species_field'  => 'species',
 
     // --- Paiement FlexPaie (Mobile Money) ---
-    'flexpay_merchant'   => 'MARCO_SERVICE',
+    'flexpay_merchant'   => '',            // ton code marchand FlexPaie (dans config.local.php)
     'flexpay_token'      => getenv('FLEXPAY_TOKEN') ?: '',   // si vide : pas de paiement
     'flexpay_mobile_url' => 'https://backend.flexpay.cd/api/rest/v1/paymentService',
     'flexpay_check_url'  => 'https://apicheck.flexpaie.com/api/rest/v1/check/',
