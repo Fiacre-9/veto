@@ -11,7 +11,8 @@ $o = refresh_order($ref);
 $out = ['ref' => $o['ref'], 'status' => $o['status']];
 if ($o['status'] === 'done') {
     $out['summary'] = $o['summary'];
-    $out['result']  = json_decode((string)$o['result_json'], true);
+    $full = json_decode((string)$o['result_json'], true);
+    $out['result']  = (is_array($full) && isset($full['result']) && is_array($full['result'])) ? $full['result'] : $full;
 }
 if (in_array($o['status'], ['failed', 'error'], true)) $out['error'] = $o['error'];
 json_out($out);

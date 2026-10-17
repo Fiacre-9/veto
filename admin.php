@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $count = fn(string $w) => (int)$pdo->query("SELECT COUNT(*) FROM diagnostics WHERE $w")->fetchColumn();
   $rev = (int)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM diagnostics WHERE paid_at IS NOT NULL")->fetchColumn();
   $today = (int)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM diagnostics WHERE paid_at >= '" . gmdate('Y-m-d 00:00:00') . "'")->fetchColumn();
-  $rows = $pdo->query('SELECT created_at, ref, phone, species, zone, amount, currency, status, summary FROM diagnostics ORDER BY id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
+  $rows = $pdo->query('SELECT created_at, ref, phone, species, zone, amount, currency, status, summary, api_error FROM diagnostics ORDER BY id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC);
 ?>
   <h2>Admin – <?= e(cfg()['app_name']) ?> <a href="?logout=1" style="font-size:.8rem">Déconnexion</a></h2>
   <div class="kpi">
@@ -51,11 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   </div>
   <p style="font-size:.85rem">Les lignes « error » sont des clients qui ont payé sans recevoir de résultat : à rembourser ou à traiter à la main (référence + téléphone ci-dessous).</p>
   <div class="scroll"><table>
-    <tr><th>Date (UTC)</th><th>Réf.</th><th>Téléphone</th><th>Espèce / zone</th><th>Montant</th><th>Statut</th><th>Résultat</th></tr>
+    <tr><th>Date (UTC)</th><th>Réf.</th><th>Téléphone</th><th>Espèce / zone</th><th>Montant</th><th>Statut</th><th>Résultat / erreur API</th></tr>
     <?php foreach ($rows as $r): ?>
     <tr><td><?= e(substr($r['created_at'], 0, 16)) ?></td><td><?= e($r['ref']) ?></td><td><?= e($r['phone']) ?></td>
         <td><?= e($r['species']) ?><?= $r['zone'] ? ' · ' . e($r['zone']) : '' ?></td>
-        <td><?= (int)$r['amount'] ?> <?= e($r['currency']) ?></td><td><?= e($r['status']) ?></td><td><?= e($r['summary']) ?></td></tr>
+        <td><?= (int)$r['amount'] ?> <?= e($r['currency']) ?></td><td><?= e($r['status']) ?></td><td><?= e($r['summary'] ?: $r['api_error']) ?></td></tr>
     <?php endforeach; ?>
   </table></div>
 <?php endif; ?>

@@ -67,8 +67,11 @@ function db(): PDO {
         species TEXT, zone TEXT, symptoms TEXT,
         image_path TEXT, image_mime TEXT,
         attempts INTEGER NOT NULL DEFAULT 0,
-        result_json TEXT, summary TEXT, error TEXT
+        result_json TEXT, summary TEXT, error TEXT, api_error TEXT
     )');
+    // migration : ajoute api_error aux bases créées avant cette version
+    $cols = array_column($pdo->query('PRAGMA table_info(diagnostics)')->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('api_error', $cols, true)) $pdo->exec('ALTER TABLE diagnostics ADD COLUMN api_error TEXT');
     return $pdo;
 }
 
@@ -200,6 +203,16 @@ function call_livestock_api(string $species, string $symptoms, ?string $imagePat
     return [$code, is_array($json) ? $json : ['raw' => $body], $err];
 }
 
+/** Phrase courte tirée de la réponse de l'API (l'objet `result` s'il existe, sinon la réponse entière). */
+function summarize_result(array $result): string {
+    $r = (isset($result['result']) && is_array($result['result'])) ? $result['result'] : $result;
+    foreach (['disease', 'diagnosis', 'condition', 'prediction', 'label', 'summary', 'assessment', 'finding', 'health_status'] as $k) {
+        if (isset($r[$k]) && is_scalar($r[$k]) && (string)$r[$k] !== '') return mb_substr((string)$r[$k], 0, 200);
+    }
+    if (isset($result['message']) && is_string($result['message']) && $result['message'] !== '') return mb_substr($result['message'], 0, 200);
+    return 'Résultat reçu (voir les détails)';
+}
+
 function run_diagnosis(array $o): void {
     $img = null;
     if (!empty($o['image_path'])) {
@@ -208,19 +221,23 @@ function run_diagnosis(array $o): void {
     }
     [$code, $result, $err] = call_livestock_api((string)$o['species'], (string)$o['symptoms'], $img, $o['image_mime']);
 
-    if ($err || $code >= 400 || $code === 0) {
+    // L'API répond { status, message, result, metadata, cacheTime } : un statut d'erreur peut arriver avec un HTTP 200.
+    $apiStatus = is_array($result) ? strtolower((string)($result['status'] ?? '')) : '';
+    $apiFailed = in_array($apiStatus, ['error', 'fail', 'failed', 'failure'], true);
+    if ($err || $code >= 400 || $code === 0 || $apiFailed) {
+        $detail = 'HTTP ' . $code . ($err ? ' – ' . $err : '')
+                . (is_array($result) && isset($result['message']) && is_string($result['message']) ? ' – ' . mb_substr($result['message'], 0, 200) : '');
         $attempts = (int)$o['attempts'] + 1;
         if ($attempts >= 3) {
-            set_order($o['ref'], ['status' => 'error', 'attempts' => $attempts,
+            set_order($o['ref'], ['status' => 'error', 'attempts' => $attempts, 'api_error' => $detail,
                 'error' => 'Le diagnostic a échoué après paiement. Contacte le support avec la référence ' . $o['ref'] . '.']);
         } else {
-            set_order($o['ref'], ['status' => 'paid', 'attempts' => $attempts, 'error' => 'Nouvelle tentative…']);
+            set_order($o['ref'], ['status' => 'paid', 'attempts' => $attempts, 'error' => 'Nouvelle tentative…', 'api_error' => $detail]);
         }
         return;
     }
 
-    $summary = $result['disease'] ?? $result['diagnosis'] ?? $result['prediction'] ?? $result['result'] ?? 'Résultat reçu';
-    if (is_array($summary)) $summary = json_encode($summary, JSON_UNESCAPED_UNICODE);
+    $summary = summarize_result($result);
     set_order($o['ref'], [
         'status' => 'done',
         'result_json' => json_encode($result, JSON_UNESCAPED_UNICODE),
