@@ -1,0 +1,19 @@
+<?php
+// Copie ce fichier en config.local.php sur le serveur et remplis les valeurs.
+// Ne le mets JAMAIS sur GitHub.
+return [
+    // RapidAPI : valeurs de l'onglet "Code Snippets (PHP cURL)" de l'API
+    'rapidapi_key'  => 'TA_NOUVELLE_CLE_RAPIDAPI',
+    'rapidapi_host' => 'HOST_EXACT_DE_L_API',
+    'endpoint'      => '/CHEMIN_EXACT',
+
+    // FlexPaie : le même token que la machine WiFi (avec ou sans le mot "Bearer")
+    'flexpay_token'    => 'TON_TOKEN_FLEXPAIE',
+    'flexpay_merchant' => 'MARCO_SERVICE',
+    'price'            => 500,
+    'currency'         => 'CDF',
+    'base_url'         => 'https://veto.mireb.online',
+
+    // Page admin.php (recettes, paiements en attente/en erreur)
+    'admin_password'   => 'UN_MOT_DE_PASSE_LONG',
+];
